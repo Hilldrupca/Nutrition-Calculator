@@ -101,23 +101,4 @@ class Connector:
         choice = int(input("What food group would you like to see? "))-1
         
         return res[choice]
-            
-
-    def test(self,nut):
-        food = nut.foodSearch()
-        print(list(food))
-        
-        dbNum = nut.nutData('01001')
-        for row in dbNum:
-            print(list(row))
-        
-        defi = nut.defSearch('203')
-        print(list(defi))
-        
-        wg = nut.wgSearch('01001')
-        for row in wg:
-            print(list(row))
-            
-        fg = nut.fgSearch()
-        print(list(fg))
-
+    
