@@ -1,104 +1,105 @@
-import mysqlx
+import mysql.connector as sql
 import getpass
 import re
 from difflib import SequenceMatcher as SeqMatch
 class Connector:
     
     def __init__(self):
+        """Initialize Connector()."""
         
         #self.username = input("Username: ")
         #self.password = getpass.getpass()
-        self.username = "chris"
-        self.password = "mysql"
-        self.foodTable = ''
-        self.nutTable = ''
-        self.defTable = ''
-        self.wgTable = ''
-        self.fgTable = ''
-        self.connect()
+        self.username = 'chris'
+        self.password = 'mysql'
+        self.cursor=''
+        self.__connect()
         
-    def connect(self):
-        
+    def __connect(self):
+        """Connect to mysql like database."""
         while True:
             try:
-                session = mysqlx.get_session({
-                    'host': 'localhost', 'port': 33060, \
-                    'user': self.username, \
-                    'password': self.password})
-                db = session.get_schema('USDA_Nutrition')
-                self.foodTable = db.get_table('Food_Description')
-                self.nutTable = db.get_table('Nutrition_Data')
-                self.defTable = db.get_table('Nutrient_Definition')
-                self.wgTable = db.get_table('Weight')
-                self.fgTable = db.get_table('Food_Group')
+                self.session = sql.connect(user=self.username,
+                                           password=self.password,
+                                           database='USDA_Nutrition')
+                self.cursor = self.session.cursor()
                 break
             except:
                 print("Oops! Username or password are invalid. Please Try again...")
-                print("Press control-c to exit.")
-                self.__init__()
+                print("Press control-d to exit.")
+                self.username = input("Username: ")
+                self.password = getpass.getpass()
     
     def foodSearch(self,search):
+        """Return 25 most relevant ingredients from database based on search terms.
+        
+        Keyword arguments:
+        search -- string to search for (e.g. 'salted butter')
+        """
+        
+        #split string on certain non text characters
         seaList = re.split('[ ,.;:]',search)
         while(seaList.count('')):
             seaList.remove('')
  
-        res = self.foodTable.select()
         if not seaList:
             return
-        if(len(seaList) > 1):
-            whereString = 'Ldes like :' + seaList[0]
-            
-            for word in range(1,len(seaList)):
-                whereString = whereString + ' and Ldes like :' + seaList[word]
-            
-            res.where(whereString)
-                 
-            for word in range(0,len(seaList)):
-                res.bind(seaList[word],'%{}%'.format(seaList[word]))
         
-        else:
-            res.where('Ldes like :' + seaList[0])
-            res.bind(seaList[0],'%{}%'.format(seaList[0]))
-            
-        res = res.execute().fetch_all()
+        sqlstring = "select * from Food_Description where Ldes like '%{}%'".format(seaList[0])
+        
+        if(len(seaList) > 1):
+            for word in range(1,len(seaList)):
+                sqlstring.join(' and Ldes like "%{}%"'.format(seaList[word]))
+                 
+        self.cursor.execute(sqlstring)
+        res = self.cursor.fetchall()
 
         #sort search results by relevance
-        res = sorted(res,key=lambda row: SeqMatch(None,row[2],*seaList).ratio(),reverse=True)
+        res = sorted(res,key=lambda row: SeqMatch(None,res[2],*seaList).ratio(),reverse=True)
         
         return res[:25]
     
     def nutData(self, dbNum):
-        res = self.nutTable.select().where('DBnum=:dbNum') \
-                        .bind('dbNum','{}'.format(dbNum)) \
-                        .execute() \
-                        .fetch_all()
+        """Return the nutrition data for an ingredient.
         
-        return res
+        Keyword arguments:
+        dbNum -- database number as a string (e.g. '01001' = Butter, salted)
+        """
+        
+        self.cursor.execute('select * from Nutrition_Data where DBnum={}'.format(dbNum))
+        return self.cursor.fetchall()
 
     def defSearch(self,nut):
-        res = self.defTable.select('Units','Nutr_Desc').where('Nutr_Num=:nut') \
-                    .bind('nut',nut) \
-                    .execute() \
-                    .fetch_one()
+        """Return nutrient weight unit and definition.
         
-        return res
+        Keyword arguments:
+        nut -- nutrient number as a string (e.g. '203' = protein)
+        """
+        
+        self.cursor.execute('select Units, Nutr_Desc from Nutrient_Definition where Nutr_Num={}'.format(nut))
+        return self.cursor.fetchall()
 
     def wgSearch(self,dbNum):
-        res = self.wgTable.select('Amount','Unit','Grams').where('DBnum=:dbNum') \
-                    .bind('dbNum',dbNum) \
-                    .execute() \
-                    .fetch_all()
-        return res
+        """Return known volumes and weights for an ingredient.
+        
+        Keyword arguments:
+        dbNum -- database number as a string (e.g. '01001' = Butter, salted)
+        """
+        
+        self.cursor.execute('select Amount, Unit, Grams from Weight where DBnum={}'.format(dbNum))
+        return self.cursor.fetchall()
 
     def fgSearch(self):
-        res = self.fgTable.select() \
-                    .execute() \
-                    .fetch_all()
+        """Return chosen food group number and description that is searchable in database.
         
+        Returns:
+        returns a tuple ('food group #', 'food group description')
+        """
+        
+        self.cursor.execute('select * from Food_Group')
+        res = self.cursor.fetchall()
         for row in range(0,len(res)):
             print(str(row+1) + ': ' + res[row][1])
             
         choice = int(input("What food group would you like to see? "))-1
         
         return res[choice]
-    

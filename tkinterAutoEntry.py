@@ -7,7 +7,7 @@ class AutoCompleteEntry(Entry):
     def __init__(self, *args, **kwargs):
         super(AutoCompleteEntry,self).__init__(*args, **kwargs)
         self.text = self['textvariable'] = StringVar()
-        self.nutr = '' #nutrition.Connector() holder
+        self.nutr = nutrition.Connector()
         self.lbox = '' #Listbox() holder
         self.timer = ''
         self.selection = '' #RowResult Object holder
@@ -20,12 +20,12 @@ class AutoCompleteEntry(Entry):
         elif not self.selection or self.selection[2] != self.text.get():
             scrollbar = Scrollbar()
             self.lbox = Listbox(yscrollcommand=scrollbar.set,width=100)
-            self.nutr = nutrition.Connector().foodSearch(self.text.get())
-            if self.nutr:
+            self.result = self.nutr.foodSearch(self.text.get())
+            if self.result:
                 self.lbox.place(x=self.winfo_x(), y=self.winfo_y()+self.winfo_height())
                 self.lbox.bind('<Button-1>', self.select)
                 self.lbox.delete(0,END)
-                for row in self.nutr:
+                for row in self.result:
                     self.lbox.insert(END,row[2])
                 scrollbar.config(command=self.lbox.yview)
         else:
@@ -44,7 +44,7 @@ class AutoCompleteEntry(Entry):
 
     def select(self, Event):
         choice = self.lbox.nearest(Event.y)
-        self.selection = self.nutr[choice]
+        self.selection = self.result[choice]
         self.text.set(self.selection[2])
         self.lbox.destroy()
                 
