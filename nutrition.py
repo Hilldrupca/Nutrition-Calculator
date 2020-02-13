@@ -68,12 +68,16 @@ class Connector:
         self.cursor.execute('select * from Nutrition_Data where DBnum={}'.format(dbNum))
         return self.cursor.fetchall()
 
-    def defSearch(self,nut):
+    def defSearch(self,nut=None):
         """Return nutrient weight unit and definition.
         
         Keyword arguments:
-        nut -- nutrient number as a string (e.g. '203' = protein)
+        nut -- nutrient number as a string (e.g. '203' = protein),
+            to show all nutrients exclude this.
         """
+        if not nut:
+            self.cursor.execute('select Units, Nutr_Desc from Nutrient_Definition')
+            return self.cursor.fetchall()
         
         self.cursor.execute('select Units, Nutr_Desc from Nutrient_Definition where Nutr_Num={}'.format(nut))
         return self.cursor.fetchall()
