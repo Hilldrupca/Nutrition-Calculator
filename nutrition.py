@@ -37,7 +37,7 @@ class Connector:
         """
         
         #split string on certain non text characters
-        seaList = re.split('[ ,.;:]',search)
+        seaList = re.split('[ ,.;:]',search.lower())
         while(seaList.count('')):
             seaList.remove('')
  
@@ -48,14 +48,21 @@ class Connector:
         
         if(len(seaList) > 1):
             for word in range(1,len(seaList)):
-                sqlstring.join(' and Ldes like "%{}%"'.format(seaList[word]))
+                sqlstring = sqlstring + ' and Ldes like "%{}%"'.format(seaList[word])
                  
         self.cursor.execute(sqlstring)
         res = self.cursor.fetchall()
 
         #sort search results by relevance
-        res = sorted(res,key=lambda row: SeqMatch(None,res[2],*seaList).ratio(),reverse=True)
-        
+        res = sorted(res,
+                     key=lambda row:
+                         SeqMatch(
+                            None,
+                            ''.join(re.split('[ ,]', row[2].lower())),
+                            ''.join(seaList),
+                         ).ratio(),
+                     reverse=True
+                    )
         return res[:25]
     
     def nutData(self, dbNum):
